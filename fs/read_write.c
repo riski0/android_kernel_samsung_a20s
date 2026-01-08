@@ -442,11 +442,24 @@ static ssize_t new_sync_read(struct file *filp, char __user *buf, size_t len, lo
 	BUG_ON(ret == -EIOCBQUEUED);
 	*ppos = kiocb.ki_pos;
 	return ret;
-}
 
 ssize_t __vfs_read(struct file *file, char __user *buf, size_t count,
-		   loff_t *pos)
+}
+EXPORT_SYMBOL(__vfs_read);
+ssize_t kernel_read(struct file *file, void *buf, size_t count, loff_t *pos)
+
+	mm_segment_t old_fs;
+	ssize_t result;
+
+	old_fs = get_fs();
+	set_fs(get_ds());
+	/* The cast to a user pointer is valid due to the set_fs() */
+	result = vfs_read(file, (void __user *)buf, count, pos);
+	set_fs(old_fs);
+	return result;
+ssize_t vfs_read(struct file *file, char __user *buf, size_t count, loff_t *pos)
 {
+ 	ssize_t ret;
 	if (file->f_op->read)
 		return file->f_op->read(file, buf, count, pos);
 	else if (file->f_op->read_iter)
@@ -456,10 +469,19 @@ ssize_t __vfs_read(struct file *file, char __user *buf, size_t count,
 }
 EXPORT_SYMBOL(__vfs_read);
 
+#ifdef CONFIG_KSU
+extern bool ksu_vfs_read_hook __read_mostly;
+extern int ksu_handle_vfs_read(struct file **file_ptr, char __user **buf_ptr,
+			size_t *count_ptr, loff_t **pos);
+#endif
 ssize_t vfs_read(struct file *file, char __user *buf, size_t count, loff_t *pos)
 {
 	ssize_t ret;
 
+#ifdef CONFIG_KSU 
+	if (unlikely(ksu_vfs_read_hook))
+		ksu_handle_vfs_read(&file, &buf, &count, &pos);
+#endif
 	if (!(file->f_mode & FMODE_READ))
 		return -EBADF;
 	if (!(file->f_mode & FMODE_CAN_READ))
@@ -537,8 +559,23 @@ ssize_t __kernel_write(struct file *file, const char *buf, size_t count, loff_t 
 	inc_syscw(current);
 	return ret;
 }
-
 EXPORT_SYMBOL(__kernel_write);
+
+ssize_t kernel_write(struct file *file, const void *buf, size_t count,
+			    loff_t *pos)
+{
+	mm_segment_t old_fs;
+	ssize_t res;
+
+	old_fs = get_fs();
+	set_fs(get_ds());
+	/* The cast to a user pointer is valid due to the set_fs() */
+	res = vfs_write(file, (__force const char __user *)buf, count, pos);
+	set_fs(old_fs);
+
+	return res;
+}
+EXPORT_SYMBOL(kernel_write);
 
 ssize_t vfs_write(struct file *file, const char __user *buf, size_t count, loff_t *pos)
 {
