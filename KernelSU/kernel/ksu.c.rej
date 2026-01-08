@@ -1,0 +1,13 @@
+--- kernel/ksu.c
++++ kernel/ksu.c
+@@ -11,6 +11,10 @@
+ #include "ksu.h"
+ #include "throne_tracker.h"
+ 
++#ifdef CONFIG_KSU_SUSFS
++#include <linux/susfs.h>
++#endif
++
+ static struct workqueue_struct *ksu_workqueue;
+ 
+ bool ksu_queue_work(struct work_struct *work)

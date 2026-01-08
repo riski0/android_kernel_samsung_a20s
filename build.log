@@ -1,0 +1,149 @@
+[0;34m[*][0m ==========================================
+[0;34m[*][0m Samsung Galaxy A20s Kernel Build
+[0;34m[*][0m KernelSU + SUSFS Enabled
+[0;34m[*][0m ==========================================
+[0;34m[*][0m Build date: 20260108-1651
+[0;34m[*][0m Defconfig: a20s_eur_open_defconfig
+[0;34m[*][0m Clang: /workspaces/android_kernel_samsung_a20s/toolchain/clang/bin
+[0;34m[*][0m GCC: /workspaces/android_kernel_samsung_a20s/toolchain/gcc/bin
+[0;34m[*][0m Threads: 2
+[0;34m[*][0m ==========================================
+[0;34m[*][0m Configuring kernel with a20s_eur_open_defconfig...
+make[1]: Entering directory '/workspaces/android_kernel_samsung_a20s/out'
+  GEN     ./Makefile
+  HOSTCC  scripts/basic/fixdep
+  HOSTCC  scripts/kconfig/conf.o
+  SHIPPED scripts/kconfig/zconf.tab.c
+  SHIPPED scripts/kconfig/zconf.lex.c
+  SHIPPED scripts/kconfig/zconf.hash.c
+  HOSTCC  scripts/kconfig/zconf.tab.o
+  HOSTLD  scripts/kconfig/conf
+drivers/input/touchscreen/Kconfig:1389:warning: ignoring unsupported character ''
+drivers/input/touchscreen/focaltech_touch_n9/Kconfig:5:warning: ignoring unsupported character ''
+drivers/input/touchscreen/focaltech_touch_n9/Kconfig:6:warning: ignoring unsupported character ''
+drivers/input/touchscreen/focaltech_touch_n9/Kconfig:7:warning: ignoring unsupported character ''
+drivers/input/touchscreen/focaltech_touch_n9/Kconfig:11:warning: ignoring unsupported character ''
+drivers/input/touchscreen/focaltech_touch_n9/Kconfig:12:warning: ignoring unsupported character ''
+drivers/input/touchscreen/focaltech_touch_n9/Kconfig:13:warning: ignoring unsupported character ''
+drivers/input/touchscreen/focaltech_touch_n9/Kconfig:14:warning: ignoring unsupported character ''
+drivers/input/touchscreen/focaltech_touch_n9/Kconfig:14:warning: ignoring unsupported character ''
+drivers/input/fingerprint/fpc/Kconfig:1:warning: ignoring type redefinition of 'FINGERPRINT_FPC' from 'boolean' to 'tristate'
+drivers/input/fingerprint/fpc/Kconfig:1:warning: ignoring type redefinition of 'FINGERPRINT_FPC' from 'boolean' to 'tristate'
+#
+# configuration written to .config
+#
+make[1]: Leaving directory '/workspaces/android_kernel_samsung_a20s/out'
+[0;34m[*][0m Verifying KernelSU configuration...
+[0;32m[✓][0m KernelSU enabled
+[1;33m[!][0m SUSFS not enabled
+[1;33m[!][0m Magic mount not enabled
+[0;34m[*][0m Building kernel...
+make[1]: Entering directory '/workspaces/android_kernel_samsung_a20s/out'
+  GEN     ./Makefile
+scripts/kconfig/conf  --silentoldconfig Kconfig
+drivers/input/touchscreen/Kconfig:1389:warning: ignoring unsupported character ''
+drivers/input/touchscreen/focaltech_touch_n9/Kconfig:5:warning: ignoring unsupported character ''
+drivers/input/touchscreen/focaltech_touch_n9/Kconfig:6:warning: ignoring unsupported character ''
+drivers/input/touchscreen/focaltech_touch_n9/Kconfig:7:warning: ignoring unsupported character ''
+drivers/input/touchscreen/focaltech_touch_n9/Kconfig:11:warning: ignoring unsupported character ''
+drivers/input/touchscreen/focaltech_touch_n9/Kconfig:12:warning: ignoring unsupported character ''
+drivers/input/touchscreen/focaltech_touch_n9/Kconfig:13:warning: ignoring unsupported character ''
+drivers/input/touchscreen/focaltech_touch_n9/Kconfig:14:warning: ignoring unsupported character ''
+drivers/input/touchscreen/focaltech_touch_n9/Kconfig:14:warning: ignoring unsupported character ''
+drivers/input/fingerprint/fpc/Kconfig:1:warning: ignoring type redefinition of 'FINGERPRINT_FPC' from 'boolean' to 'tristate'
+drivers/input/fingerprint/fpc/Kconfig:1:warning: ignoring type redefinition of 'FINGERPRINT_FPC' from 'boolean' to 'tristate'
+  CHK     include/config/kernel.release
+  GEN     ./Makefile
+  UPD     include/config/kernel.release
+  WRAP    arch/arm64/include/generated/asm/bugs.h
+  WRAP    arch/arm64/include/generated/asm/clkdev.h
+  WRAP    arch/arm64/include/generated/asm/cputime.h
+  WRAP    arch/arm64/include/generated/asm/delay.h
+  CHK     include/generated/uapi/linux/version.h
+  WRAP    arch/arm64/include/generated/asm/div64.h
+  WRAP    arch/arm64/include/generated/asm/dma.h
+  WRAP    arch/arm64/include/generated/asm/dma-contiguous.h
+  UPD     include/generated/uapi/linux/version.h
+  WRAP    arch/arm64/include/generated/asm/early_ioremap.h
+  WRAP    arch/arm64/include/generated/asm/emergency-restart.h
+  WRAP    arch/arm64/include/generated/asm/errno.h
+  WRAP    arch/arm64/include/generated/asm/hw_irq.h
+  WRAP    arch/arm64/include/generated/asm/ioctl.h
+  WRAP    arch/arm64/include/generated/asm/ioctls.h
+  WRAP    arch/arm64/include/generated/asm/ipcbuf.h
+  WRAP    arch/arm64/include/generated/asm/irq_regs.h
+  WRAP    arch/arm64/include/generated/asm/kmap_types.h
+  WRAP    arch/arm64/include/generated/asm/kdebug.h
+  WRAP    arch/arm64/include/generated/asm/kvm_para.h
+  WRAP    arch/arm64/include/generated/asm/local.h
+  WRAP    arch/arm64/include/generated/asm/local64.h
+  WRAP    arch/arm64/include/generated/asm/mcs_spinlock.h
+  WRAP    arch/arm64/include/generated/asm/mm-arch-hooks.h
+  WRAP    arch/arm64/include/generated/asm/mman.h
+  WRAP    arch/arm64/include/generated/asm/msgbuf.h
+  WRAP    arch/arm64/include/generated/asm/msi.h
+  WRAP    arch/arm64/include/generated/asm/mutex.h
+  WRAP    arch/arm64/include/generated/asm/poll.h
+  WRAP    arch/arm64/include/generated/asm/preempt.h
+  CHK     include/generated/utsrelease.h
+  WRAP    arch/arm64/include/generated/asm/resource.h
+  WRAP    arch/arm64/include/generated/asm/qrwlock.h
+  WRAP    arch/arm64/include/generated/asm/rwsem.h
+  WRAP    arch/arm64/include/generated/asm/segment.h
+  WRAP    arch/arm64/include/generated/asm/sembuf.h
+  WRAP    arch/arm64/include/generated/asm/serial.h
+  WRAP    arch/arm64/include/generated/asm/shmbuf.h
+  UPD     include/generated/utsrelease.h
+  WRAP    arch/arm64/include/generated/asm/simd.h
+  WRAP    arch/arm64/include/generated/asm/sizes.h
+  WRAP    arch/arm64/include/generated/asm/socket.h
+  WRAP    arch/arm64/include/generated/asm/sockios.h
+  WRAP    arch/arm64/include/generated/asm/swab.h
+  WRAP    arch/arm64/include/generated/asm/switch_to.h
+  WRAP    arch/arm64/include/generated/asm/termbits.h
+  WRAP    arch/arm64/include/generated/asm/termios.h
+  WRAP    arch/arm64/include/generated/asm/trace_clock.h
+  WRAP    arch/arm64/include/generated/asm/types.h
+  WRAP    arch/arm64/include/generated/asm/unaligned.h
+  WRAP    arch/arm64/include/generated/asm/user.h
+  WRAP    arch/arm64/include/generated/asm/vga.h
+  WRAP    arch/arm64/include/generated/asm/xor.h
+  WRAP    arch/arm64/include/generated/uapi/asm/kvm_para.h
+  HOSTCC  scripts/basic/fixdep
+  HOSTCC  scripts/basic/bin2c
+../drivers/kernelsu/Makefile:28: "KSU_GIT_VERSION not defined! It is better to make KernelSU a git submodule!"
+-- KernelSU Manager signature size: 0x033b
+-- KernelSU Manager signature hash: c371061b19d8c7d7d6133c6a9bafe198fa944e50c1b31c9d8daa8d7f1fc2d2d6
+-- Did you know you can backport path_umount to fs/namespace.c from 5.9?
+-- Read: https://kernelsu.org/guide/how-to-integrate-for-non-gki.html#how-to-backport-path-umount
+expr: syntax error: unexpected argument ‘29’
+expr: syntax error: unexpected argument ‘28’
+../scripts/gcc-version.sh: /workspaces/android_kernel_samsung_a20s/toolchain/gcc/bin/aarch64-linux-android-gcc: /usr/bin/python: bad interpreter: No such file or directory
+../scripts/gcc-version.sh: /workspaces/android_kernel_samsung_a20s/toolchain/gcc/bin/aarch64-linux-android-gcc: /usr/bin/python: bad interpreter: No such file or directory
+../scripts/gcc-version.sh: /workspaces/android_kernel_samsung_a20s/toolchain/gcc/bin/aarch64-linux-android-gcc: /usr/bin/python: bad interpreter: No such file or directory
+../scripts/gcc-version.sh: /workspaces/android_kernel_samsung_a20s/toolchain/gcc/bin/aarch64-linux-android-gcc: /usr/bin/python: bad interpreter: No such file or directory
+  Using .. as source for kernel
+  HOSTCC  scripts/dtc/dtc.o
+  HOSTCC  scripts/dtc/flattree.o
+  HOSTCC  scripts/dtc/fstree.o
+  HOSTCC  scripts/dtc/data.o
+  HOSTCC  scripts/dtc/livetree.o
+  HOSTCC  scripts/dtc/treesource.o
+  HOSTCC  scripts/dtc/srcpos.o
+  HOSTCC  scripts/dtc/checks.o
+  HOSTCC  scripts/dtc/util.o
+  SHIPPED scripts/dtc/dtc-lexer.lex.c
+  SHIPPED scripts/dtc/dtc-parser.tab.h
+  SHIPPED scripts/dtc/dtc-parser.tab.c
+  HOSTCC  scripts/dtc/dtc-lexer.lex.o
+  HOSTCC  scripts/dtc/dtc-parser.tab.o
+  CC      scripts/mod/empty.o
+error: unknown warning option '-Wno-undefined-optimized'; did you mean '-Wno-undefined-inline'? [-Werror,-Wunknown-warning-option]
+make[3]: *** [../scripts/Makefile.build:340: scripts/mod/empty.o] Error 1
+make[2]: *** [../scripts/Makefile.build:653: scripts/mod] Error 2
+  HOSTLD  scripts/dtc/dtc
+make[2]: *** Waiting for unfinished jobs....
+make[1]: *** [/workspaces/android_kernel_samsung_a20s/Makefile:622: scripts] Error 2
+make[1]: Leaving directory '/workspaces/android_kernel_samsung_a20s/out'
+make: *** [Makefile:152: sub-make] Error 2
+[0;31m[✗][0m Kernel build failed!
