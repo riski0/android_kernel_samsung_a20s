@@ -1,0 +1,188 @@
+# Build kernel (in-tree KernelSU + apply susfs patches)
+# - Integrate KernelSU into tree (drivers/kernelsu)
+# - Apply any *.patch found in repo root or patches/
+# - Use defconfig: a20s_eur_open_defconfig
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+env:
+  ARCH: arm64
+  SUBARCH: arm64
+  DEFCONFIG: a20s_eur_open_defconfig
+  OUTPUT_DIR: out
+  TOOLCHAIN_DIR: toolchains
+  # Sesuaikan toolchain URLs jika perlu
+  CLANG_URL: https://github.com/llvm/llvm-project/releases/download/llvmorg-21.1.8/LLVM-21.1.8-Linux-ARM64.tar.xz
+  GCC_AARCH64_URL: https://developer.arm.com/-/media/Files/downloads/gnu/15.2.rel1/binrel/arm-gnu-toolchain-15.2.rel1-x86_64-aarch64-none-elf.tar.xz
+  # Default KernelSU repo for in-tree integration (ubah kalau kamu pakai fork lain)
+  KERNELSU_REPO: https://github.com/backslashxx/KernelSU.git
+  # If you already committed patches into repo, workflow will pick them up.
+  PATCH_GLOB: "*.patch"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout kernel source (full)
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Setup toolchains (download & extract)
+      run: |
+        set -ex
+        mkdir -p "${{ env.TOOLCHAIN_DIR }}"
+        cd "${{ env.TOOLCHAIN_DIR }}"
+
+        # clang (tarball)
+        if [ ! -d clang ]; then
+          curl -L -o clang.tar.xz "${CLANG_URL}"
+          mkdir -p clang
+          tar -xf clang.tar.xz -C clang --strip-components=1
+        fi
+
+        # gcc aarch64 (for cross-linker if needed)
+        if [ ! -d gcc-aarch64 ]; then
+          curl -L -o gcc.tar.xz "${GCC_AARCH64_URL}"
+          mkdir -p gcc-aarch64
+          tar -xf gcc.tar.xz -C gcc-aarch64 --strip-components=1
+        fi
+
+        echo "Toolchains ready"
+
+    - name: Prepare PATH & toolchain env (exports for following steps)
+      id: toolchain-env
+      run: |
+        echo "TOOLCHAIN_BIN=${GITHUB_WORKSPACE}/${{ env.TOOLCHAIN_DIR }}/clang/bin:${GITHUB_WORKSPACE}/${{ env.TOOLCHAIN_DIR }}/gcc-aarch64/bin" >> $GITHUB_ENV
+        # prefer clang in PATH
+        echo "PATH=${GITHUB_WORKSPACE}/${{ env.TOOLCHAIN_DIR }}/clang/bin:${GITHUB_WORKSPACE}/${{ env.TOOLCHAIN_DIR }}/gcc-aarch64/bin:${PATH}" >> $GITHUB_ENV
+
+    - name: Integrate KernelSU in-tree (drivers/kernelsu)
+      if: ${{ env.KERNELSU_REPO != '' }}
+      run: |
+        set -ex
+        # clone KernelSU into a temp dir, then copy into drivers/kernelsu
+        TMPDIR=$(mktemp -d)
+        git clone --depth 1 "${KERNELSU_REPO}" "$TMPDIR" || { echo "failed clone kernelsu"; exit 1; }
+        mkdir -p drivers
+        # remove existing drivers/kernelsu if exists (use with caution)
+        if [ -d drivers/kernelsu ]; then
+          echo "drivers/kernelsu exists, backing up"
+          mv drivers/kernelsu drivers/kernelsu.bak.$(date +%s) || true
+        fi
+        rsync -a "$TMPDIR/" drivers/kernelsu/
+        rm -rf "$TMPDIR"
+
+        # Commit integration locally so that subsequent 'git apply' sees working tree changes if necessary
+        git config user.email "action@github.com" || true
+        git config user.name "github-actions" || true
+        git add drivers/kernelsu || true
+        git commit -m "ci: integrate KernelSU into drivers/kernelsu (in-tree) [ci skip]" || true
+
+    - name: Apply any patches (*.patch) in repo root or patches/
+      run: |
+        set -ex
+        # search for patches in repo root and patches/ folder
+        found=0
+        while IFS= read -r -d '' p; do
+          found=1
+          echo "Applying patch: $p"
+          # try git apply first (keeps index), fallback to patch -p1
+          if git apply --whitespace=fix "$p"; then
+            git add -A
+            git commit -m "ci: apply patch $p" || true
+          else
+            echo "git apply failed, trying patch -p1"
+            if patch -p1 --forward --no-backup-if-mismatch < "$p"; then
+              git add -A
+              git commit -m "ci: apply patch $p (patch -p1)" || true
+            else
+              echo "WARNING: failed to apply $p; continuing but build may fail"
+            fi
+          fi
+        done < <(find . -maxdepth 2 -type f -name "${PATCH_GLOB}" -print0)
+
+        if [ "$found" -eq 0 ]; then
+          echo "No .patch files found (skipping)."
+        fi
+
+    - name: Prepare .config (defconfig + merge KSU/SUSFS fragment)
+      shell: bash
+      run: |
+        set -ex
+        export ARCH=${ARCH}
+        export SUBARCH=${SUBARCH}
+        mkdir -p "${OUTPUT_DIR}"
+        # Ensure clean build config
+        make O=${OUTPUT_DIR} ARCH=${ARCH} ${DEFCONFIG}
+
+        # Create a fragment to enable KernelSU/SUSFS options (adjust if you have specific names)
+        cat > kernel-fragment.cfg <<'EOF'
+CONFIG_KSU=y
+CONFIG_KSU_MANUAL_HOOK=y
+CONFIG_KSU_SUSFS=y
+CONFIG_KSU_SUSFS_SUS_PATH=y
+CONFIG_KSU_SUSFS_SUS_MOUNT=y
+CONFIG_KSU_SUSFS_SUS_KSTAT=y
+CONFIG_KSU_SUSFS_TRY_UMOUNT=y
+CONFIG_KSU_SUSFS_SPOOF_UNAME=y
+CONFIG_KSU_SUSFS_ENABLE_LOG=y
+CONFIG_KSU_SUSFS_HIDE_KSU_SUSFS_SYMBOLS=y
+CONFIG_KSU_SUSFS_SPOOF_CMDLINE_OR_BOOTCONFIG=y
+CONFIG_KSU_SUSFS_OPEN_REDIRECT=y
+EOF
+
+        # Merge fragment into current .config (prefer merge_config.sh if present)
+        if [ -f scripts/kconfig/merge_config.sh ]; then
+          scripts/kconfig/merge_config.sh ${OUTPUT_DIR}/.config kernel-fragment.cfg
+        else
+          # fallback: append and run olddefconfig
+          cat kernel-fragment.cfg >> ${OUTPUT_DIR}/.config
+        fi
+
+        # ensure updated config is used
+        make O=${OUTPUT_DIR} ARCH=${ARCH} olddefconfig
+
+    - name: Build kernel + modules
+      shell: bash
+      run: |
+        set -ex
+        export ARCH=${ARCH}
+        export SUBARCH=${SUBARCH}
+        export CC=clang
+        export LD=ld.lld
+        export CLANG_TRIPLE=aarch64-linux-gnu-
+        export CROSS_COMPILE=aarch64-linux-gnu-
+        export PATH="${{ env.TOOLCHAIN_BIN }}:${PATH}"
+
+        # Build image and modules
+        make -j$(nproc) O=${OUTPUT_DIR} ARCH=${ARCH} ${DEFCONFIG}
+        # Common image target for 4.9 kernels (adjust if needed)
+        make -j$(nproc) O=${OUTPUT_DIR} ARCH=${ARCH} Image.gz-dtb || make -j$(nproc) O=${OUTPUT_DIR} ARCH=${ARCH} Image || true
+        make -j$(nproc) O=${OUTPUT_DIR} ARCH=${ARCH} modules || true
+
+        # Collect kernel image/dtb
+        mkdir -p release/kernel
+        if [ -f ${OUTPUT_DIR}/arch/arm64/boot/Image.gz-dtb ]; then
+          cp -v ${OUTPUT_DIR}/arch/arm64/boot/Image.gz-dtb release/kernel/
+        elif [ -f ${OUTPUT_DIR}/arch/arm64/boot/Image ]; then
+          cp -v ${OUTPUT_DIR}/arch/arm64/boot/Image release/kernel/
+        fi
+        cp -v ${OUTPUT_DIR}/arch/arm64/boot/dts/*/*.dtb release/kernel/ || true
+
+        # collect built modules
+        mkdir -p release/modules
+        (cd ${OUTPUT_DIR} && find . -name '*.ko' -print0 | xargs -0 -I{} cp --parents {} ../../release/modules/ || true)
+
+    - name: Package kernel + modules
+      run: |
+        set -ex
+        zip -r kernel-release.zip release || true
+
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: kernel-release
+        path: kernel-release.zip
