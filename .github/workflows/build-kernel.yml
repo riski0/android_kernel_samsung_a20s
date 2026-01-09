@@ -205,16 +205,19 @@ jobs:
         CONFIG_KSU=y
         CONFIG_KSU_DEBUG=y
         
-        # SUSFS Configuration
+        # SUSFS Configuration (based on 10_enable_susfs_for_ksu.patch)
         CONFIG_KSU_SUSFS=y
         CONFIG_KSU_SUSFS_SUS_PATH=y
         CONFIG_KSU_SUSFS_SUS_MOUNT=y
         CONFIG_KSU_SUSFS_SUS_KSTAT=y
+        CONFIG_KSU_SUSFS_SUS_MAPS=y
         CONFIG_KSU_SUSFS_TRY_UMOUNT=y
         CONFIG_KSU_SUSFS_SPOOF_UNAME=y
         CONFIG_KSU_SUSFS_ENABLE_LOG=y
-        CONFIG_KSU_SUSFS_OPEN_REDIRECT=y
-        CONFIG_KSU_SUSFS_SUS_SU=y
+        # Experimental options (disabled by default):
+        # CONFIG_KSU_SUSFS_SUS_MOUNT_MNT_ID_REORDER=n
+        # CONFIG_KSU_SUSFS_SUS_PROC_FD_LINK=n
+        # CONFIG_KSU_SUSFS_SUS_MEMFD=n
         EOF
         
         echo "Merging KernelSU/SUSFS config fragment..."
