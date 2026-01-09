@@ -1,63 +1,99 @@
+name: Build Non-GKI Kernel + KernelSU-Next + SUSFS (boot.img)
 
-  "kernelSource": 
-    "device": "a20s"
-    "vendor": "samsung"
-    "name": "iie-kernelsu-next"
-    "defconfig": "a20s_eur_open_defconfig"
-    "extraConfig": ""
-    "repo": "https://github.com/GalaxyA20s/android_kernel_samsung_a20s"
-    "branch": "main"
-  "output_image": "Image",
-  "kp": 
-    "use": false
-    "kpimg_link": ""
-  
-  "kernelsu": {
-    "enable": true
-    "setupLink": "https://raw.githubusercontent.com/KernelSU-Next/KernelSU-Next/next/kernel/setup.sh"
-    "setupArg": "next"
-    "setupName": "KernelSU-Next"
-    "needPatch": true
-    "susfsLink": "https://raw.githubusercontent.com/wodanesdag/susfs4ksu/refs/heads/next-4.9/kernel_patches/KernelSU/10_enable_susfs_for_ksu.patch" // Patch link
-  
-  "toolchains": 
-    
-      "repo": "https://gitlab.com/DR-KernelArchive/clang/r547379"
-      "branch": "master"
-      "name": "clang-AOSP"
-      "binPath": ["/bin"]
-  
-  "ccache": true
-  "params": {
-    "ARCH": "arm64"
-    "CC": "clang-AOSP/bin/clang"
-    "externalCommand": {
-      "KBUILD_BUILD_HOST": "iie"
-      "KBUILD_BUILD_USER": "rainyxeon"
-      "CROSS_COMPILE": "clang-AOSP/bin/aarch64-linux-gnu-"
-      "CROSS_COMPILE_ARM32": "clang-AOSP/bin/arm-linux-gnueabi-"
-      "LD": "clang-AOSP/bin/ld.lld"
-      "LLVM": "1"
-      "LLVM_IAS": "1"
-      "AR": "clang-AOSP/bin/llvm-ar"
-      "NM": "clang-AOSP/bin/llvm-nm"
-      "OBJCOPY": "clang-AOSP/bin/llvm-objcopy"
-      "OBJDUMP": "clang-AOSP/bin/llvm-objdump"
-      "READELF": "clang-AOSP/bin/llvm-readelf"
-      "OBJSIZE": "clang-AOSP/bin/llvm-size"
-      "STRIP": "clang-AOSP/bin/llvm-strip"
-      "LDGOLD": "clang-AOSP/bin/aarch64-linux-gnu-ld.gold"
-      "LLVM_AR": "clang-AOSP/bin/llvm-ar"
-      "LLVM_DIS": "clang-AOSP/bin/llvm-dis"
-  
-  "image": 
-    "use": true
-    "imageUrl": "https://github.com/riski0/android_kernel_samsung_a20s/arch/boot.img"
-    "imageName": "boot.img"
-  
-  "AnyKernel3": 
-    "use": false
-    "release": true
-    "repo": "https://github.com/DR-KernelArchive/AnyKernel3"
-    "branch": "odin"
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
 
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+
+    steps:
+    # =========================
+    # Checkout
+    # =========================
+    - name: Checkout kernel source
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 1
+
+    # =========================
+    # Dependencies
+    # =========================
+    - name: Install dependencies
+      run: |
+        sudo apt update
+        sudo apt install -y \
+          bc bison flex git make ccache \
+          libssl-dev libelf-dev \
+          python3 python-is-python3 \
+          clang lld \
+          device-tree-compiler \
+          unzip
+
+    # =========================
+    # Build Environment
+    # =========================
+    - name: Export build variables
+      run: |
+        echo "ARCH=arm64" >> $GITHUB_ENV
+        echo "SUBARCH=arm64" >> $GITHUB_ENV
+        echo "CC=clang" >> $GITHUB_ENV
+        echo "CLANG_TRIPLE=aarch64-linux-gnu-" >> $GITHUB_ENV
+        echo "CROSS_COMPILE=aarch64-linux-gnu-" >> $GITHUB_ENV
+
+    # =========================
+    # Defconfig
+    # =========================
+    - name: Kernel defconfig
+      run: |
+        make a20s_eur_open_defconfig
+
+    # =========================
+    # Build Kernel + DTB
+    # =========================
+    - name: Build kernel Image & DTB
+      run: |
+        make -j$(nproc) Image dtbs
+
+    # =========================
+    # Prepare AnyKernel3
+    # =========================
+    - name: Clone AnyKernel3
+      run: |
+        git clone --depth=1 https://github.com/osm0sis/AnyKernel3.git AnyKernel3
+
+    - name: Copy Image & DTB
+      run: |
+        cp arch/arm64/boot/Image AnyKernel3/
+
+        # gabungkan semua dtb (Samsung non-GKI)
+        cat arch/arm64/boot/dts/exynos/*.dtb > AnyKernel3/dtb
+
+    # =========================
+    # AnyKernel3 Config
+    # =========================
+    - name: Patch anykernel.sh
+      run: |
+        sed -i 's/do.devicecheck=1/do.devicecheck=0/g' AnyKernel3/anykernel.sh
+        sed -i 's/do.modules=0/do.modules=0/g' AnyKernel3/anykernel.sh
+        sed -i 's/do.cleanup=1/do.cleanup=1/g' AnyKernel3/anykernel.sh
+
+    # =========================
+    # Pack boot.img
+    # =========================
+    - name: Build boot.img
+      run: |
+        cd AnyKernel3
+        zip -r9 kernel.zip ./*
+        mv kernel.zip ../boot.img
+
+    # =========================
+    # Upload
+    # =========================
+    - name: Upload boot.img
+      uses: actions/upload-artifact@v4
+      with:
+        name: boot-img
+        path: boot.img
