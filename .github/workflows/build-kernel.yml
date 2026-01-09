@@ -1,0 +1,243 @@
+name: Build Samsung Galaxy A20s Kernel with KernelSU and susfs
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    env:
+      ARCH: arm64
+      DEFCONFIG: a20s_eur_open_defconfig
+      OUTPUT_DIR: out
+      KERNEL_IMG_NAME: Image.gz-dtb
+      TOOLCHAIN_DIR: toolchains
+      # Toolchain URLs - Update these with actual working URLs
+      CLANG_URL: https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/master/clang-r383902.tar.gz
+      GCC_AARCH64_URL: https://android.googlesource.com/platform/prebuilts/gcc/linux-x86/aarch64/aarch64-linux-android-4.9/+archive/refs/heads/master.tar.gz
+      # KernelSU repository (backslashxx/Magic version as per BUILD_INFO)
+      KERNELSU_REPO: https://github.com/backslashxx/KernelSU
+      KERNELSU_BRANCH: main
+    
+    steps:
+    - name: Checkout kernel source
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        submodules: recursive
+
+    - name: Setup build environment
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y build-essential bc bison flex libssl-dev libncurses5-dev \
+          libelf-dev libudev-dev libpci-dev libiberty-dev zip unzip curl wget git
+
+    - name: Setup toolchains
+      run: |
+        set -ex
+        mkdir -p ${{ env.TOOLCHAIN_DIR }}
+        cd ${{ env.TOOLCHAIN_DIR }}
+        
+        # Download and extract Clang
+        echo "Downloading Clang toolchain..."
+        if [ ! -d proton-clang ]; then
+          mkdir -p proton-clang
+          wget -q -O clang.tar.gz "${{ env.CLANG_URL }}" || \
+            curl -L -o clang.tar.gz "${{ env.CLANG_URL }}"
+          tar -xf clang.tar.gz -C proton-clang
+          rm clang.tar.gz
+        fi
+        
+        # Download and extract GCC aarch64
+        echo "Downloading GCC aarch64 toolchain..."
+        if [ ! -d gcc-aarch64 ]; then
+          mkdir -p gcc-aarch64
+          wget -q -O gcc.tar.gz "${{ env.GCC_AARCH64_URL }}" || \
+            curl -L -o gcc.tar.gz "${{ env.GCC_AARCH64_URL }}"
+          tar -xf gcc.tar.gz -C gcc-aarch64
+          rm gcc.tar.gz
+        fi
+        
+        echo "Toolchains setup complete"
+        ls -la
+
+    - name: Clone KernelSU (in-tree integration)
+      run: |
+        set -ex
+        echo "Cloning KernelSU into drivers/kernelsu..."
+        if [ ! -d drivers/kernelsu ]; then
+          git clone --depth 1 -b ${{ env.KERNELSU_BRANCH }} ${{ env.KERNELSU_REPO }} drivers/kernelsu
+        fi
+        
+        # Verify KernelSU was cloned
+        if [ -d drivers/kernelsu ]; then
+          echo "KernelSU cloned successfully"
+          ls -la drivers/kernelsu/
+        else
+          echo "Error: KernelSU not cloned"
+          exit 1
+        fi
+
+    - name: Apply patches
+      run: |
+        set -ex
+        echo "Applying patches from patches/ directory..."
+        
+        # Apply patches using git apply first, fallback to patch -p1
+        if [ -d patches ]; then
+          for patch_file in patches/*.patch; do
+            if [ -f "$patch_file" ]; then
+              echo "Applying patch: $patch_file"
+              if ! git apply --check "$patch_file" 2>/dev/null; then
+                echo "git apply failed, trying patch -p1..."
+                patch -p1 -N < "$patch_file" || echo "Warning: patch may already be applied or failed"
+              else
+                git apply "$patch_file" || echo "Warning: Failed to apply $patch_file with git apply"
+              fi
+            fi
+          done
+        fi
+        
+        # Also check root directory for patch files
+        for patch_file in *.patch; do
+          if [ -f "$patch_file" ]; then
+            echo "Applying patch from root: $patch_file"
+            if ! git apply --check "$patch_file" 2>/dev/null; then
+              echo "git apply failed, trying patch -p1..."
+              patch -p1 -N < "$patch_file" || echo "Warning: patch may already be applied or failed"
+            else
+              git apply "$patch_file" || echo "Warning: Failed to apply $patch_file with git apply"
+            fi
+          fi
+        done
+        
+        echo "Patch application complete"
+
+    - name: Setup kernel configuration
+      run: |
+        set -ex
+        export PATH="${{ github.workspace }}/${{ env.TOOLCHAIN_DIR }}/proton-clang/bin:${{ github.workspace }}/${{ env.TOOLCHAIN_DIR }}/gcc-aarch64/bin:$PATH"
+        export CC=clang
+        export CLANG_TRIPLE=aarch64-linux-gnu-
+        export CROSS_COMPILE=aarch64-linux-gnu-
+        export ARCH=${{ env.ARCH }}
+        
+        # Create output directory
+        mkdir -p ${{ env.OUTPUT_DIR }}
+        
+        # Make defconfig
+        echo "Creating defconfig: ${{ env.DEFCONFIG }}"
+        make O=${{ env.OUTPUT_DIR }} ARCH=${{ env.ARCH }} ${{ env.DEFCONFIG }}
+
+    - name: Add kernel config fragment for KernelSU and susfs
+      run: |
+        set -ex
+        
+        # Create kernel config fragment with KernelSU and susfs options
+        cat > kernel-fragment.cfg <<'EOF'
+        # KernelSU configuration
+        CONFIG_KSU=y
+        CONFIG_KSU_DEBUG=y
+        
+        # SUSFS configuration
+        CONFIG_KSU_SUSFS=y
+        CONFIG_KSU_SUSFS_SUS_PATH=y
+        CONFIG_KSU_SUSFS_SUS_MOUNT=y
+        CONFIG_KSU_SUSFS_SUS_KSTAT=y
+        CONFIG_KSU_SUSFS_SUS_MAPS=y
+        CONFIG_KSU_SUSFS_TRY_UMOUNT=y
+        CONFIG_KSU_SUSFS_SPOOF_UNAME=y
+        CONFIG_KSU_SUSFS_ENABLE_LOG=y
+        
+        # Additional kernel modules support
+        CONFIG_MODULES=y
+        CONFIG_MODULE_UNLOAD=y
+        CONFIG_MODVERSIONS=y
+        EOF
+        
+        # Merge fragment into config
+        if [ -f scripts/kconfig/merge_config.sh ]; then
+          echo "Merging config fragment using merge_config.sh..."
+          scripts/kconfig/merge_config.sh -m -O ${{ env.OUTPUT_DIR }} ${{ env.OUTPUT_DIR }}/.config kernel-fragment.cfg
+        else
+          echo "merge_config.sh not found, appending fragment to .config..."
+          cat kernel-fragment.cfg >> ${{ env.OUTPUT_DIR }}/.config
+        fi
+        
+        # Update config
+        export ARCH=${{ env.ARCH }}
+        make O=${{ env.OUTPUT_DIR }} ARCH=${{ env.ARCH }} olddefconfig
+
+    - name: Build kernel
+      run: |
+        set -ex
+        export PATH="${{ github.workspace }}/${{ env.TOOLCHAIN_DIR }}/proton-clang/bin:${{ github.workspace }}/${{ env.TOOLCHAIN_DIR }}/gcc-aarch64/bin:$PATH"
+        export ARCH=${{ env.ARCH }}
+        export CROSS_COMPILE=aarch64-linux-gnu-
+        export CC=clang
+        export CLANG_TRIPLE=aarch64-linux-gnu-
+        
+        # Build kernel image
+        echo "Building kernel image: ${{ env.KERNEL_IMG_NAME }}"
+        make -j$(nproc) O=${{ env.OUTPUT_DIR }} ARCH=${{ env.ARCH }} ${{ env.KERNEL_IMG_NAME }} || \
+          (echo "Failed to build ${{ env.KERNEL_IMG_NAME }}, trying Image instead..." && \
+           make -j$(nproc) O=${{ env.OUTPUT_DIR }} ARCH=${{ env.ARCH }} Image && \
+           export KERNEL_IMG_NAME=Image)
+        
+        # Build modules
+        echo "Building kernel modules..."
+        make -j$(nproc) O=${{ env.OUTPUT_DIR }} ARCH=${{ env.ARCH }} modules
+
+    - name: Collect artifacts
+      run: |
+        set -ex
+        
+        # Create release directory structure
+        mkdir -p release/kernel
+        mkdir -p release/modules
+        
+        # Copy kernel image
+        if [ -f "${{ env.OUTPUT_DIR }}/arch/arm64/boot/${{ env.KERNEL_IMG_NAME }}" ]; then
+          cp -v "${{ env.OUTPUT_DIR }}/arch/arm64/boot/${{ env.KERNEL_IMG_NAME }}" release/kernel/
+        elif [ -f "${{ env.OUTPUT_DIR }}/arch/arm64/boot/Image" ]; then
+          cp -v "${{ env.OUTPUT_DIR }}/arch/arm64/boot/Image" release/kernel/
+        fi
+        
+        # Copy DTBs if available
+        if [ -d "${{ env.OUTPUT_DIR }}/arch/arm64/boot/dts" ]; then
+          find "${{ env.OUTPUT_DIR }}/arch/arm64/boot/dts" -name '*.dtb' -exec cp -v {} release/kernel/ \; || true
+        fi
+        
+        # Collect modules
+        echo "Collecting kernel modules..."
+        cd ${{ env.OUTPUT_DIR }}
+        find . -name '*.ko' -exec cp --parents -v {} ../release/modules/ \; || true
+        cd ..
+        
+        # Copy BUILD_INFO if available
+        if [ -f patches/BUILD_INFO_KERNELSU_NEXT.txt ]; then
+          cp -v patches/BUILD_INFO_KERNELSU_NEXT.txt release/
+        fi
+        
+        # Create zip archive
+        echo "Creating kernel release archive..."
+        cd release
+        zip -r ../kernel-a20s-kernelsu-susfs.zip .
+        cd ..
+        
+        # Show what was built
+        echo "Build artifacts:"
+        ls -lh release/kernel/
+        ls -lh kernel-a20s-kernelsu-susfs.zip
+
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: kernel-a20s-kernelsu-susfs
+        path: kernel-a20s-kernelsu-susfs.zip
+        retention-days: 30
