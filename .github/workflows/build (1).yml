@@ -230,11 +230,6 @@ jobs:
                 exit 1
             fi
 
-        - name: 'Clone any submodules if present'
-          working-directory: './kernel-src'
-          run: |
-            git submodule init; git submodule update
-
         - name: 'Patch KernelSU repository into the kernel source'
           working-directory: './kernel-src'
           run: |
