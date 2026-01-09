@@ -1,0 +1,99 @@
+name: Samsung A20s Kernel 4.9 (KernelSU Legacy)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+
+    steps:
+    - name: Checkout kernel source
+      uses: actions/checkout@v4
+
+    - name: Install dependencies
+      run: |
+        sudo apt update
+        sudo apt install -y \
+          bc bison flex ccache \
+          build-essential \
+          libssl-dev \
+          libncurses-dev \
+          libelf-dev \
+          git curl zip unzip \
+          python3
+
+    # ===============================
+    # PREBUILT TOOLCHAIN (BENAR)
+    # ===============================
+    - name: Setup toolchain
+      run: |
+        mkdir toolchain && cd toolchain
+
+        git clone --depth=1 https://github.com/LineageOS/android_prebuilts_clang_host_linux-x86 clang
+        git clone --depth=1 https://github.com/LineageOS/android_prebuilts_gcc_linux-x86_aarch64_aarch64-linux-android-4.9 gcc64
+
+    - name: Export env
+      run: |
+        echo "ARCH=arm64" >> $GITHUB_ENV
+        echo "SUBARCH=arm64" >> $GITHUB_ENV
+        echo "CC=clang" >> $GITHUB_ENV
+        echo "CLANG_TRIPLE=aarch64-linux-gnu-" >> $GITHUB_ENV
+        echo "CROSS_COMPILE=$(pwd)/toolchain/gcc64/bin/aarch64-linux-android-" >> $GITHUB_ENV
+        echo "PATH=$(pwd)/toolchain/clang/bin:$(pwd)/toolchain/gcc64/bin:$PATH" >> $GITHUB_ENV
+
+    # ===============================
+    # DEFCONFIG (WAJIB DULU)
+    # ===============================
+    - name: Kernel defconfig
+      run: |
+        make a20s_eur_open_defconfig
+
+    # ===============================
+    # KERNELSU LEGACY PATCH (BENAR)
+    # ===============================
+    - name: Patch KernelSU Legacy
+      run: |
+        git clone --depth=1 -b legacy https://github.com/tiann/KernelSU.git
+        bash KernelSU/scripts/patch_kernel.sh .
+
+        scripts/config --enable CONFIG_KSU
+        scripts/config --enable CONFIG_KSU_SUSFS
+
+    # ===============================
+    # BUILD
+    # ===============================
+    - name: Build kernel
+      run: |
+        make -j$(nproc)
+
+    # ===============================
+    # ANYKERNEL3
+    # ===============================
+    - name: Package AnyKernel3
+      run: |
+        git clone --depth=1 https://github.com/osm0sis/AnyKernel3.git
+        cp arch/arm64/boot/Image AnyKernel3/
+        cd AnyKernel3
+        zip -r ../A20s-KernelSU-4.9.zip *
+
+    # ===============================
+    # ARTIFACT
+    # ===============================
+    - name: Upload artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: A20s-KernelSU
+        path: A20s-KernelSU-4.9.zip
+
+    # ===============================
+    # RELEASE
+    # ===============================
+    - name: GitHub Release
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: v${{ github.run_number }}
+        name: A20s KernelSU 4.9 Build ${{ github.run_number }}
+        files: A20s-KernelSU-4.9.zip
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
