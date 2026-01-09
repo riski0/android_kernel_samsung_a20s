@@ -1,0 +1,100 @@
+name: Samsung A20s (SDM450) Kernel Build + KSU & SUSFS
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ testing/enable-kernelsu-manager ]
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+
+    steps:
+    - name: Checkout kernel source
+      uses: actions/checkout@v4
+
+    - name: Install build dependencies
+      run: |
+        [span_0](start_span)sudo apt update[span_0](end_span)
+        sudo apt install -y \
+          bc bison flex git make ccache \
+          libssl-dev libelf-dev \
+          python3 python-is-python3 \
+          clang lld llvm \
+          gcc-aarch64-linux-gnu \
+          device-tree-compiler \
+          [span_1](start_span)lz4 gzip zip unzip[span_1](end_span)
+
+    # ========================================================
+    # INTEGRASI KERNELSU-NEXT & SUSFS
+    # ========================================================
+    - name: Setup KernelSU-Next
+      run: |
+        curl -LSs "https://raw.githubusercontent.com/rifsxd/KernelSU-Next/main/kernel/setup.sh" | bash -s main
+
+    -     - name: Setup SUSFS
+      run: |
+        git clone https://gitlab.com/simonpunk/susfs4ksu.git -b kernel-4.9 susfs_src
+        
+        # Salin file inti SUSFS
+        cp susfs_src/kernel_patches/fs/susfs.c fs/
+        cp susfs_src/kernel_patches/include/linux/susfs.h include/linux/
+        
+        # Terapkan patch ke KernelSU-Next
+        cd KernelSU-Next
+        patch -p1 < ../susfs_src/kernel_patches/50_add_susfs_to_ksu.patch || true
+        cd ..
+
+        # Terapkan patch ke sistem kernel (PENTING untuk kernel 4.9)
+        # Catatan: Jika gagal, ini karena perbedaan baris kode di kernel Samsung
+        patch -p1 < susfs_src/kernel_patches/KernelFix/0001-Fix-SUSFS-for-kernel-4.9.patch || true
+
+
+    # ========================================================
+
+    - name: Export environment variables
+      run: |
+        [span_2](start_span)echo "ARCH=arm64" >> $GITHUB_ENV[span_2](end_span)
+        [span_3](start_span)echo "SUBARCH=arm64" >> $GITHUB_ENV[span_3](end_span)
+        [span_4](start_span)echo "CC=clang" >> $GITHUB_ENV[span_4](end_span)
+        [span_5](start_span)echo "CROSS_COMPILE=aarch64-linux-gnu-" >> $GITHUB_ENV[span_5](end_span)
+        echo "KBUILD_BUILD_USER=Gemini" >> $GITHUB_ENV
+        echo "KBUILD_BUILD_HOST=Github-Actions" >> $GITHUB_ENV
+
+    - name: Load defconfig
+      run: |
+        [span_6](start_span)make O=out ARCH=arm64 a20s_eur_open_defconfig[span_6](end_span)
+        # Mengaktifkan KernelSU & SUSFS di konfigurasi
+        scripts/config --file out/.config --enable CONFIG_KSU
+        scripts/config --file out/.config --enable CONFIG_KSU_SUSFS
+        scripts/config --file out/.config --enable CONFIG_SUSFS
+
+    - name: Build Kernel + DTB
+      run: |
+        make -j$(nproc) O=out \
+          ARCH=arm64 \
+          CC=clang \
+          CROSS_COMPILE=aarch64-linux-gnu- \
+          [span_7](start_span)Image dtbs[span_7](end_span)
+
+    - name: Create unified dtb
+      run: |
+        [span_8](start_span)mkdir -p out/dtb_final[span_8](end_span)
+        [span_9](start_span)cat out/arch/arm64/boot/dts/qcom/*.dtb > out/dtb_final/dtb[span_9](end_span)
+
+    - name: Clone AnyKernel3
+      run: |
+        [span_10](start_span)git clone --depth=1 https://github.com/osm0sis/AnyKernel3.git AnyKernel3[span_10](end_span)
+
+    - name: Prepare AnyKernel3 Artifacts
+      run: |
+        gzip -9 out/arch/arm64/boot/Image
+        [span_11](start_span)cp out/arch/arm64/boot/Image.gz AnyKernel3/zImage[span_11](end_span)
+        [span_12](start_span)cp out/dtb_final/dtb AnyKernel3/dtb[span_12](end_span)
+
+    - name: Upload Kernel Flashable
+      uses: actions/upload-artifact@v4
+      with:
+        name: Kernel_A20s_KSU_Next_SUSFS
+        path: AnyKernel3/*
+        
