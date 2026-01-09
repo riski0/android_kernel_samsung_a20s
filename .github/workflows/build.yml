@@ -3,7 +3,7 @@ name: Samsung A20s (Qualcomm SDM450) Non-GKI KernelSU-Next + SUSFS
 on:
   workflow_dispatch:
   push:
-    branches: [ main ]
+    branches: [ testing/enable-kernelsu-manager ]
 
 jobs:
   build:
