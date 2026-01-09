@@ -1,0 +1,49 @@
+Samsung Galaxy A20s - KernelSU-Next & susfs4ksu Build
+======================================================
+
+Build Date: Thu Jan  8 18:19:58 UTC 2026
+Kernel Version: 4.9.x
+Architecture: ARM64
+
+Components:
+-----------
+- KernelSU-Next (backslashxx/Magic version)
+  Repository: https://github.com/backslashxx/KernelSU
+  Version: v3.0.0+
+  
+- susfs4ksu
+  Repository: https://gitlab.com/simonpunk/susfs4ksu
+  Version: Latest from master
+  
+Features:
+---------
+✓ KernelSU-Next with Magic enhancements
+✓ susfs4ksu full integration
+✓ Path hiding (SUS_PATH)
+✓ Mount hiding (SUS_MOUNT)
+✓ Kstat hiding (SUS_KSTAT)
+✓ Try umount support
+✓ Uname spoofing
+✓ Open redirect
+✓ SU binary hiding
+✓ Debug logging enabled
+
+Build Instructions:
+-------------------
+1. Run this setup script: ./setup_kernelsu_next_susfs.sh
+2. Build kernel: ./build_kernel_improved.sh
+3. Create flashable zip: ./create_flashable_zip.sh
+
+Notes:
+------
+- This is KernelSU-Next (Magic version), not standard KernelSU
+- susfs4ksu provides advanced hiding capabilities
+- Debug mode is enabled for testing
+- Compatible with KernelSU Manager app
+
+Support:
+--------
+- KernelSU-Next: https://github.com/backslashxx/KernelSU
+- susfs4ksu: https://gitlab.com/simonpunk/susfs4ksu
+- Telegram: @simonpunk (susfs)
+
