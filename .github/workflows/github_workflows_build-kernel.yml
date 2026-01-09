@@ -49,18 +49,18 @@ jobs:
         echo "::add-path::${{ runner.workspace }}/${{ env.TOOLCHAIN_DIR }}/gcc-aarch64/bin"
       # NOTE: add-path is deprecated in some runners; subsequent shell steps will set PATH explicitly.
 
-    - name: Prepare build environment
-      shell: bash
+    - name: Build kernel
       run: |
-        set -ex
-        export PATH="${{ github.workspace }}/${{ env.TOOLCHAIN_DIR }}/proton-clang/bin:${{ github.workspace }}/${{ env.TOOLCHAIN_DIR }}/gcc-aarch64/bin:$PATH"
-        export CC=clang
-        export CLANG_TRIPLE=aarch64-linux-gnu-
-        export CROSS_COMPILE=aarch64-linux-gnu-
-        export ARCH=${{ env.ARCH }}
-        mkdir -p ${{ env.OUTPUT_DIR }}
-        # Make defconfig
-        make O=${{ env.OUTPUT_DIR }} ARCH=${{ env.ARCH }} ${DEFCONFIG}
+       export ARCH=arm64
+       export SUBARCH=arm64
+       export CC=clang
+       export LD=ld.lld
+       export CLANG_TRIPLE=aarch64-linux-gnu-
+       export CROSS_COMPILE=aarch64-linux-android-
+
+    make a20s_eur_open_defconfig
+    make -j$(nproc)
+
 
     - name: Add kernel config fragment for KernelSU / susfs
       shell: bash
