@@ -1,0 +1,78 @@
+name: Samsung A20s (Qualcomm SDM450) Non-GKI KernelSU-Next + SUSFS + Test
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ testing/enable-kernelsu-manager ]
+
+env:
+  OUT_DIR: "${{ github.workspace }}/out"
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+
+    steps:
+    - name: Checkout kernel source
+      uses: actions/checkout@v4
+
+    - name: Install build dependencies
+      run: |
+        sudo apt update
+        sudo apt install -y \
+          bc bison flex git make ccache \
+          libssl-dev libelf-dev \
+          python3 python-is-python3 \
+          clang lld llvm \
+          device-tree-compiler \
+          lz4 gzip zip unzip libncurses5-dev
+
+    - name: Export environment variables
+      run: |
+        echo "ARCH=arm64" >> $GITHUB_ENV
+        echo "SUBARCH=arm64" >> $GITHUB_ENV
+        echo "CC=clang" >> $GITHUB_ENV
+        echo "CLANG_TRIPLE=aarch64-linux-gnu-" >> $GITHUB_ENV
+        echo "CROSS_COMPILE=aarch64-linux-gnu-" >> $GITHUB_ENV
+        echo "CROSS_COMPILE_ARM32=arm-linux-gnueabi-" >> $GITHUB_ENV
+
+    - name: Load defconfig (A20s SDM450)
+      run: |
+        make O=$OUT_DIR ARCH=arm64 CC=clang CROSS_COMPILE=aarch64-linux-gnu- a20s_eur_open_defconfig
+
+    - name: Build kernel Image & DTB
+      run: |
+        # Menggunakan argumen lengkap untuk menghindari Error 2 pada tahap prepare
+        make -j$(nproc) O=$OUT_DIR \
+          ARCH=arm64 \
+          CC=clang \
+          CLANG_TRIPLE=aarch64-linux-gnu- \
+          CROSS_COMPILE=aarch64-linux-gnu- \
+          CROSS_COMPILE_ARM32=arm-linux-gnueabi- \
+          Image dtbs
+
+    - name: Create unified dtb
+      run: |
+        mkdir -p $OUT_DIR/dtb_out
+        cat $OUT_DIR/arch/arm64/boot/dts/qcom/*.dtb > $OUT_DIR/dtb_out/dtb
+
+    - name: Clone AnyKernel3
+      run: |
+        git clone --depth=1 https://github.com/DR-KernelArchive/AnyKernel3 AnyKernel3
+
+    - name: Pack Artifact
+      run: |
+        cp $OUT_DIR/arch/arm64/boot/Image AnyKernel3/
+        # Jika menggunakan Image.gz
+        if [ -f $OUT_DIR/arch/arm64/boot/Image.gz ]; then
+          cp $OUT_DIR/arch/arm64/boot/Image.gz AnyKernel3/
+        fi
+        cp $OUT_DIR/dtb_out/dtb AnyKernel3/
+        cd AnyKernel3 && zip -r ../A20s-KernelSU-Build.zip *
+
+    - name: Upload result
+      uses: actions/upload-artifact@v4
+      with:
+        name: Samsung-A20s-Kernel
+        path: "*.zip"
+        
