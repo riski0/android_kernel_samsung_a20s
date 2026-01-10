@@ -1,0 +1,39 @@
+# KernelSU with SUSFS defconfig fragment
+# 
+# This defconfig fragment enables KernelSU and all SUSFS (Super User File System)
+# features by default. SUSFS provides advanced hiding capabilities for root detection
+# bypass.
+#
+# To apply this fragment to your device defconfig:
+#   1. Merge into your existing defconfig:
+#      cat configs/KSU_SUSFS_defconfig >> arch/arm64/configs/your_device_defconfig
+#
+#   2. Or use as a config fragment during build:
+#      scripts/kconfig/merge_config.sh arch/arm64/configs/your_device_defconfig \
+#                                       configs/KSU_SUSFS_defconfig
+#
+#   3. Or include in your build system (e.g., Android.bp or build.config):
+#      Add 'configs/KSU_SUSFS_defconfig' to your config fragments list
+#
+# Note: Some experimental features (SUS_PROC_FD_LINK, SUS_MEMFD, SUS_MOUNT_MNT_ID_REORDER)
+# are intentionally NOT enabled by default as they may cause issues on some devices.
+# Enable them manually if needed:
+#   CONFIG_KSU_SUSFS_SUS_PROC_FD_LINK=y
+#   CONFIG_KSU_SUSFS_SUS_MEMFD=y
+#   CONFIG_KSU_SUSFS_SUS_MOUNT_MNT_ID_REORDER=y
+
+# KernelSU core
+CONFIG_KSU=y
+CONFIG_KSU_DEBUG=y
+
+# SUSFS - Core features
+CONFIG_KSU_SUSFS=y
+CONFIG_KSU_SUSFS_SUS_PATH=y
+CONFIG_KSU_SUSFS_SUS_MOUNT=y
+CONFIG_KSU_SUSFS_SUS_KSTAT=y
+CONFIG_KSU_SUSFS_SUS_MAPS=y
+CONFIG_KSU_SUSFS_TRY_UMOUNT=y
+CONFIG_KSU_SUSFS_SPOOF_UNAME=y
+CONFIG_KSU_SUSFS_ENABLE_LOG=y
+CONFIG_KSU_SUSFS_OPEN_REDIRECT=y
+CONFIG_KSU_SUSFS_SUS_SU=y
