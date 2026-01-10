@@ -14,6 +14,11 @@ struct file_system_type;
 struct iomap;
 struct iomap_ops;
 struct linux_binprm;
+
+#ifdef CONFIG_KSU_SUSFS
+#include <linux/susfs.h>
+#endif
+
 struct path;
 struct mount;
 struct shrink_control;
@@ -81,6 +86,10 @@ extern int __mnt_want_write(struct vfsmount *);
 extern int __mnt_want_write_file(struct file *);
 extern void __mnt_drop_write(struct vfsmount *);
 extern void __mnt_drop_write_file(struct file *);
+
+#ifdef CONFIG_KSU_SUSFS
+int path_umount(struct path *path, int flags);
+#endif
 
 #ifdef CONFIG_KSU_SUSFS
 int path_umount(struct path *path, int flags);

@@ -9,6 +9,18 @@
 #include <linux/syscalls.h>
 #include <linux/cred.h>
 
+extern int ksu_access_ok(const void *addr, unsigned long size);
+/*
+ * ksu_hook_exists - Cek apakah simbol hook/kernel terdaftar di kallsyms
+ * @symbol: nama simbol (string NUL-terminated)
+ *
+ * Mengembalikan 1 jika simbol ditemukan (kemungkinan target hook ada),
+ * 0 jika tidak ditemukan. Fungsi ini hanya memeriksa keberadaan simbol di
+ * tabel kallsyms, bukan memastikan bahwa hook aktif atau telah di-register
+ * oleh subsistem tertentu. Berguna untuk debugging/diagnosa saat integrasi
+ * hook seperti kprobe/lsm.
+ */
+extern int ksu_hook_exists(const char *symbol);
 extern struct file *ksu_filp_open_compat(const char *filename, int flags,
 					 umode_t mode);
 extern ssize_t ksu_kernel_read_compat(struct file *p, void *buf, size_t count,
