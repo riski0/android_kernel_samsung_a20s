@@ -113,6 +113,12 @@ endif
 ifdef KSU_SUSFS_ENABLE_LOG
 ccflags-y += -DKSU_SUSFS_ENABLE_LOG
 endif
+ifdef KSU_SUSFS_OPEN_REDIRECT
+ccflags-y += -DKSU_SUSFS_OPEN_REDIRECT
+endif
+ifdef KSU_SUSFS_SUS_SU
+ccflags-y += -DKSU_SUSFS_SUS_SU
+endif
 else
 $(info -- You have not integrate susfs in your kernel.)
 $(info -- Read: https://gitlab.com/simonpunk/susfs4ksu)

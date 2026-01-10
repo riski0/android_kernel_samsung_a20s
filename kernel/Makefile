@@ -141,3 +141,48 @@ $(obj)/kheaders_data.tar.xz: FORCE
 	$(call cmd,genikh)
 
 clean-files := kheaders_data.tar.xz kheaders.md5
+
+# KernelSU SUSFS support
+ifeq ($(shell test -e $(srctree)/fs/susfs.c; echo $$?),0)
+ifdef CONFIG_KSU_SUSFS
+ccflags-y += -DKSU_SUSFS
+endif
+ifdef CONFIG_KSU_SUSFS_SUS_PATH
+ccflags-y += -DKSU_SUSFS_SUS_PATH
+endif
+ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
+ccflags-y += -DKSU_SUSFS_SUS_MOUNT
+endif
+ifdef CONFIG_KSU_SUSFS_SUS_MOUNT_MNT_ID_REORDER
+ccflags-y += -DKSU_SUSFS_SUS_MOUNT_MNT_ID_REORDER
+endif
+ifdef CONFIG_KSU_SUSFS_SUS_KSTAT
+ccflags-y += -DKSU_SUSFS_SUS_KSTAT
+endif
+ifdef CONFIG_KSU_SUSFS_SUS_MAPS
+ccflags-y += -DKSU_SUSFS_SUS_MAPS
+endif
+ifdef CONFIG_KSU_SUSFS_SUS_PROC_FD_LINK
+ccflags-y += -DKSU_SUSFS_SUS_PROC_FD_LINK
+endif
+ifdef CONFIG_KSU_SUSFS_SUS_MEMFD
+ccflags-y += -DKSU_SUSFS_SUS_MEMFD
+endif
+ifdef CONFIG_KSU_SUSFS_TRY_UMOUNT
+ccflags-y += -DKSU_SUSFS_TRY_UMOUNT
+endif
+ifdef CONFIG_KSU_SUSFS_SPOOF_UNAME
+ccflags-y += -DKSU_SUSFS_SPOOF_UNAME
+endif
+ifdef CONFIG_KSU_SUSFS_ENABLE_LOG
+ccflags-y += -DKSU_SUSFS_ENABLE_LOG
+endif
+ifdef CONFIG_KSU_SUSFS_OPEN_REDIRECT
+ccflags-y += -DKSU_SUSFS_OPEN_REDIRECT
+endif
+ifdef CONFIG_KSU_SUSFS_SUS_SU
+ccflags-y += -DKSU_SUSFS_SUS_SU
+endif
+else
+$(info -- SUSFS: fs/susfs.c not found, SUSFS flags not added)
+endif
