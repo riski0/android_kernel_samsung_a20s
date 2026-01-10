@@ -64,26 +64,26 @@ jobs:
           rm gcc.tar.gz
         fi
         
-        [submodule "toolchain/clang"]
-          path = toolchain/clang
-          url = https://github.com/kdrag0n/proton-clang.git
-          echo "Toolchains setup complete"
-          ls -la
+        echo "Toolchains setup complete"
+        ls -la
 
-    - name: Clone KernelSU (in-tree integration)
+    - name: Verify KernelSU integration
       run: |
         set -ex
-        echo "Cloning KernelSU into drivers/kernelsu..."
-        if [ ! -d drivers/kernelsu ]; then
-          git clone --depth 1 -b ${{ env.KERNELSU_BRANCH }} ${{ env.KERNELSU_REPO }} drivers/kernelsu
+        echo "Verifying KernelSU-Next installation..."
+        if [ -d KernelSU ]; then
+          echo "✓ KernelSU-Next found at repository root"
+          ls -la KernelSU/ | head -10
+        else
+          echo "✗ Error: KernelSU not found"
+          exit 1
         fi
         
-        # Verify KernelSU was cloned
-        if [ -d drivers/kernelsu ]; then
-          echo "KernelSU cloned successfully"
-          ls -la drivers/kernelsu/
+        # Verify SUSFS files
+        if [ -f fs/susfs.c ] && [ -f include/linux/susfs.h ]; then
+          echo "✓ SUSFS files found"
         else
-          echo "Error: KernelSU not cloned"
+          echo "✗ Error: SUSFS files not found"
           exit 1
         fi
 
@@ -147,6 +147,7 @@ jobs:
         # KernelSU configuration
         CONFIG_KSU=y
         CONFIG_KSU_DEBUG=y
+        CONFIG_KSU_LSM_SECURITY_HOOKS=y
         
         # SUSFS configuration
         CONFIG_KSU_SUSFS=y
@@ -157,6 +158,16 @@ jobs:
         CONFIG_KSU_SUSFS_TRY_UMOUNT=y
         CONFIG_KSU_SUSFS_SPOOF_UNAME=y
         CONFIG_KSU_SUSFS_ENABLE_LOG=y
+        CONFIG_KSU_SUSFS_AUTO_ADD_SUS_KSU_DEFAULT_MOUNT=y
+        CONFIG_KSU_SUSFS_AUTO_ADD_SUS_BIND_MOUNT=y
+        CONFIG_KSU_SUSFS_AUTO_ADD_TRY_UMOUNT_FOR_BIND_MOUNT=y
+        CONFIG_KSU_SUSFS_HAS_MAGIC_MOUNT=y
+        CONFIG_KSU_SUSFS_SUS_OVERLAYFS=y
+        CONFIG_KSU_SUSFS_HIDE_KSU_SUSFS_SYMBOLS=y
+        CONFIG_KSU_SUSFS_SPOOF_CMDLINE_OR_BOOTCONFIG=y
+        CONFIG_KSU_SUSFS_OPEN_REDIRECT=y
+        CONFIG_KSU_SUSFS_SUS_SU=y
+        CONFIG_KSU_MANUAL_HOOK=y
         
         # Additional kernel modules support
         CONFIG_MODULES=y
