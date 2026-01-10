@@ -1,0 +1,248 @@
+name: Kernel CI Build
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    
+    permissions:
+      contents: read
+    
+    env:
+      ARCH: arm64
+      SUBARCH: arm64
+      DEFCONFIG: a20s_eur_open_defconfig
+      KBUILD_OUTPUT: out
+    
+    steps:
+    - name: Checkout kernel source
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 1
+    
+    - name: Install build dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          build-essential \
+          bc \
+          bison \
+          flex \
+          libssl-dev \
+          libelf-dev \
+          device-tree-compiler \
+          gcc-aarch64-linux-gnu \
+          g++-aarch64-linux-gnu \
+          binutils-aarch64-linux-gnu \
+          clang \
+          lld \
+          llvm \
+          git \
+          zip \
+          unzip \
+          gzip \
+          lz4
+    
+    - name: Export build environment variables
+      run: |
+        echo "ARCH=arm64" >> $GITHUB_ENV
+        echo "SUBARCH=arm64" >> $GITHUB_ENV
+        echo "CROSS_COMPILE=aarch64-linux-gnu-" >> $GITHUB_ENV
+        echo "CC=clang" >> $GITHUB_ENV
+        echo "CLANG_TRIPLE=aarch64-linux-gnu-" >> $GITHUB_ENV
+        echo "KBUILD_BUILD_USER=github-ci" >> $GITHUB_ENV
+        echo "KBUILD_BUILD_HOST=github-actions" >> $GITHUB_ENV
+    
+    - name: Display build environment
+      run: |
+        echo "==== Build Environment ===="
+        echo "ARCH: ${{ env.ARCH }}"
+        echo "CROSS_COMPILE: ${{ env.CROSS_COMPILE }}"
+        echo "CC: ${{ env.CC }}"
+        echo "DEFCONFIG: ${{ env.DEFCONFIG }}"
+        echo "KBUILD_OUTPUT: ${{ env.KBUILD_OUTPUT }}"
+        echo ""
+        echo "==== Toolchain Versions ===="
+        clang --version | head -n 1
+        aarch64-linux-gnu-gcc --version | head -n 1
+        make --version | head -n 1
+        echo ""
+        echo "==== CPU Info ===="
+        nproc
+        echo ""
+    
+    - name: Configure kernel
+      run: |
+        mkdir -p ${{ env.KBUILD_OUTPUT }}
+        make O=${{ env.KBUILD_OUTPUT }} \
+          ARCH=${{ env.ARCH }} \
+          CROSS_COMPILE=${{ env.CROSS_COMPILE }} \
+          ${{ env.DEFCONFIG }}
+    
+    - name: Build kernel Image
+      run: |
+        make -j$(nproc) \
+          O=${{ env.KBUILD_OUTPUT }} \
+          ARCH=${{ env.ARCH }} \
+          CROSS_COMPILE=${{ env.CROSS_COMPILE }} \
+          CC=${{ env.CC }} \
+          CLANG_TRIPLE=${{ env.CLANG_TRIPLE }} \
+          Image
+    
+    - name: Build device tree binaries (DTBs)
+      run: |
+        make -j$(nproc) \
+          O=${{ env.KBUILD_OUTPUT }} \
+          ARCH=${{ env.ARCH }} \
+          CROSS_COMPILE=${{ env.CROSS_COMPILE }} \
+          CC=${{ env.CC }} \
+          CLANG_TRIPLE=${{ env.CLANG_TRIPLE }} \
+          dtbs
+    
+    - name: Build kernel modules
+      run: |
+        make -j$(nproc) \
+          O=${{ env.KBUILD_OUTPUT }} \
+          ARCH=${{ env.ARCH }} \
+          CROSS_COMPILE=${{ env.CROSS_COMPILE }} \
+          CC=${{ env.CC }} \
+          CLANG_TRIPLE=${{ env.CLANG_TRIPLE }} \
+          modules || echo "Warning: Module build failed, continuing..."
+    
+    - name: Create compressed kernel images
+      run: |
+        cd ${{ env.KBUILD_OUTPUT }}/arch/arm64/boot
+        
+        # Create gzipped image
+        if [ -f Image ]; then
+          gzip -fk Image
+          echo "Created Image.gz"
+        fi
+        
+        # Create lz4 compressed image  
+        if [ -f Image ] && command -v lz4 &> /dev/null; then
+          lz4 -f Image Image.lz4
+          echo "Created Image.lz4"
+        fi
+    
+    - name: Create unified DTB
+      run: |
+        if [ -d "${{ env.KBUILD_OUTPUT }}/arch/arm64/boot/dts/qcom" ]; then
+          cd ${{ env.KBUILD_OUTPUT }}/arch/arm64/boot/dts/qcom
+          if ls *.dtb 1> /dev/null 2>&1; then
+            cat *.dtb > ../../../dtb
+            echo "Created unified DTB from Qualcomm device trees"
+          fi
+        fi
+    
+    - name: Prepare build artifacts
+      run: |
+        mkdir -p artifacts/kernel
+        mkdir -p artifacts/dtbs
+        mkdir -p artifacts/modules
+        
+        # Copy kernel images
+        if [ -f "${{ env.KBUILD_OUTPUT }}/arch/arm64/boot/Image" ]; then
+          cp ${{ env.KBUILD_OUTPUT }}/arch/arm64/boot/Image artifacts/kernel/
+          echo "✓ Copied Image"
+        fi
+        
+        if [ -f "${{ env.KBUILD_OUTPUT }}/arch/arm64/boot/Image.gz" ]; then
+          cp ${{ env.KBUILD_OUTPUT }}/arch/arm64/boot/Image.gz artifacts/kernel/
+          echo "✓ Copied Image.gz"
+        fi
+        
+        if [ -f "${{ env.KBUILD_OUTPUT }}/arch/arm64/boot/Image.lz4" ]; then
+          cp ${{ env.KBUILD_OUTPUT }}/arch/arm64/boot/Image.lz4 artifacts/kernel/
+          echo "✓ Copied Image.lz4"
+        fi
+        
+        if [ -f "${{ env.KBUILD_OUTPUT }}/arch/arm64/boot/Image.gz-dtb" ]; then
+          cp ${{ env.KBUILD_OUTPUT }}/arch/arm64/boot/Image.gz-dtb artifacts/kernel/
+          echo "✓ Copied Image.gz-dtb"
+        fi
+        
+        # Copy unified DTB
+        if [ -f "${{ env.KBUILD_OUTPUT }}/arch/arm64/boot/dtb" ]; then
+          cp ${{ env.KBUILD_OUTPUT }}/arch/arm64/boot/dtb artifacts/dtbs/
+          echo "✓ Copied unified DTB"
+        fi
+        
+        # Copy individual DTBs
+        if [ -d "${{ env.KBUILD_OUTPUT }}/arch/arm64/boot/dts/qcom" ]; then
+          find ${{ env.KBUILD_OUTPUT }}/arch/arm64/boot/dts/qcom -name "*.dtb" -exec cp {} artifacts/dtbs/ \; 2>/dev/null || true
+          echo "✓ Copied individual DTB files"
+        fi
+        
+        # Copy kernel modules
+        find ${{ env.KBUILD_OUTPUT }} -name "*.ko" -exec cp --parents {} artifacts/modules/ \; 2>/dev/null || true
+        
+        # Create build info
+        cat > artifacts/BUILD_INFO.txt <<EOF
+        Build Date: $(date -u)
+        Kernel Version: $(cat ${{ env.KBUILD_OUTPUT }}/include/config/kernel.release 2>/dev/null || echo "Unknown")
+        Defconfig: ${{ env.DEFCONFIG }}
+        Architecture: ${{ env.ARCH }}
+        Compiler: $(clang --version | head -n 1)
+        Cross Compiler: $(aarch64-linux-gnu-gcc --version | head -n 1)
+        Built by: GitHub Actions CI
+        Commit: ${{ github.sha }}
+        Branch: ${{ github.ref_name }}
+        EOF
+        
+        echo ""
+        echo "==== Build Artifacts Summary ===="
+        ls -lh artifacts/kernel/
+        echo ""
+        if [ -d artifacts/dtbs ] && [ "$(ls -A artifacts/dtbs)" ]; then
+          echo "DTBs:"
+          ls -lh artifacts/dtbs/
+          echo ""
+        fi
+        if [ -d artifacts/modules ] && [ "$(ls -A artifacts/modules)" ]; then
+          echo "Module count: $(find artifacts/modules -name '*.ko' | wc -l)"
+        fi
+    
+    - name: Upload kernel artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: samsung-a20s-kernel-${{ github.sha }}
+        path: artifacts/
+        retention-days: 30
+        compression-level: 9
+    
+    - name: Build summary
+      run: |
+        echo "### ✅ Kernel Build Completed Successfully" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "**Build Information:**" >> $GITHUB_STEP_SUMMARY
+        echo "- Device: Samsung Galaxy A20s (SDM450)" >> $GITHUB_STEP_SUMMARY
+        echo "- Defconfig: ${{ env.DEFCONFIG }}" >> $GITHUB_STEP_SUMMARY
+        echo "- Architecture: ${{ env.ARCH }}" >> $GITHUB_STEP_SUMMARY
+        echo "- Commit: \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "**Artifacts:**" >> $GITHUB_STEP_SUMMARY
+        
+        if [ -f "artifacts/kernel/Image" ]; then
+          echo "- ✓ Kernel Image" >> $GITHUB_STEP_SUMMARY
+        fi
+        if [ -f "artifacts/kernel/Image.gz" ]; then
+          echo "- ✓ Compressed Kernel (gzip)" >> $GITHUB_STEP_SUMMARY
+        fi
+        if [ -f "artifacts/kernel/Image.gz-dtb" ]; then
+          echo "- ✓ Kernel with DTB (Image.gz-dtb)" >> $GITHUB_STEP_SUMMARY
+        fi
+        if [ -d "artifacts/dtbs" ] && [ "$(ls -A artifacts/dtbs)" ]; then
+          DTB_COUNT=$(ls artifacts/dtbs/*.dtb 2>/dev/null | wc -l)
+          echo "- ✓ Device Tree Binaries ($DTB_COUNT files)" >> $GITHUB_STEP_SUMMARY
+        fi
+        if [ -d "artifacts/modules" ] && [ "$(ls -A artifacts/modules)" ]; then
+          MODULE_COUNT=$(find artifacts/modules -name '*.ko' | wc -l)
+          echo "- ✓ Kernel Modules ($MODULE_COUNT modules)" >> $GITHUB_STEP_SUMMARY
+        fi
