@@ -138,11 +138,23 @@ jobs:
 
             # Install clang and LLVM
             if grep -iqE "Clang|LLVM" <<< ${{ github.event.inputs.KERNEL_COMPILER }} && [ -z ${{ github.event.inputs.KERNEL_COMPILER_TOOLCHAIN }} ]; then
-                LATEST_LLVM_TOOLCHAIN=$(curl -sSf https://api.github.com/repos/llvm/llvm-project/releases/latest | grep browser_download_url | cut -d '"' -f 4 | grep -wi "Linux-X64.tar.xz"$)
-                wget $LATEST_LLVM_TOOLCHAIN -O ./LLVM-latest-Linux-X64.tar.xz
-                tar --wildcards -xvpf ./LLVM-latest-Linux-X64.tar.xz --warning=no-file-changed --ignore-failed-read || true
-                rm -rf *.tar.xz
-            fi
+        LATEST_LLVM_TOOLCHAIN=$(curl -sSf https://api.github.com/repos/llvm/llvm-project/releases/latest | grep browser_download_url | cut -d '"' -f 4 | grep -wi "Linux-X64.tar.xz"$)
+
+        # Validate URL before download
+        wget --spider $LATEST_LLVM_TOOLCHAIN
+        if [ $? -ne 0 ]; then
+            echo "Invalid LLVM toolchain URL: $LATEST_LLVM_TOOLCHAIN"
+            exit 1
+        fi
+
+        # Download file
+        wget $LATEST_LLVM_TOOLCHAIN -O ./LLVM-latest-Linux-X64.tar.xz
+
+        # Check file type and extract appropriately
+        if ! tar -xvf ./LLVM-latest-Linux-X64.tar.xz --warning=no-file-changed --ignore-failed-read; then
+            echo "File extraction failed. Ensure it is a valid archive."
+            exit 1
+        fi
 
             # Install GCC for aarch64 and arm(32)
             if grep -iqE "GCC|Binutils" <<< ${{ github.event.inputs.KERNEL_COMPILER }} && [ -z ${{ github.event.inputs.KERNEL_COMPILER_TOOLCHAIN }} ]; then
