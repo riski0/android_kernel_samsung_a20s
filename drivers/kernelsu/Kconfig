@@ -17,7 +17,7 @@ config KSU_DEBUG
 	  Enable KernelSU debug mode.
 
 endmenu
-\nsource "KernelSU/kernel/Kconfig"
+source "KernelSU/kernel/Kconfig"
 
 menu "KernelSU - SUSFS"
 config KSU_SUSFS
