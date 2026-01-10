@@ -1,1 +1,14 @@
 out/
+.config
+defconfig
+arch/*/include/generated/
+include/config/
+include/generated/
+scripts/basic/fixdep
+scripts/basic/bin2c
+scripts/kconfig/conf
+scripts/kconfig/*.o
+scripts/kconfig/zconf.*.c
+scripts/kconfig/zconf.tab.c
+scripts/kconfig/.*.cmd
+scripts/basic/.*.cmd
