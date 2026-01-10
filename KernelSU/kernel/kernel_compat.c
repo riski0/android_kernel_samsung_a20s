@@ -10,6 +10,7 @@
 #include <linux/uaccess.h>
 #include <linux/filter.h>
 #include <linux/seccomp.h>
+#include <linux/kallsyms.h>
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 8, 0) && LINUX_VERSION_CODE < KERNEL_VERSION(5, 2, 0)
 #include <linux/key.h>
@@ -136,6 +137,39 @@ int ksu_access_ok(const void *addr, unsigned long size)
 	return access_ok(addr, size);
 #else
 	return access_ok(VERIFY_READ, addr, size);
+#endif
+}
+
+/*
+ * ksu_hook_exists - Periksa apakah simbol kernel (hook) terdaftar.
+ * @symbol: nama simbol yang dicari (C string, NUL-terminated)
+ *
+ * Mengembalikan:
+ *  1 jika simbol ditemukan di tabel kallsyms (kallsyms_lookup_name)
+ *  0 jika tidak ditemukan atau fasilitas kallsyms tidak tersedia.
+ *
+ * Penjelasan (Bahasa Indonesia):
+ * Fungsi ini berguna untuk mengecek secara cepat apakah simbol target
+ * (mis. fungsi kernel yang ingin di-hook oleh kprobe/LSM) ada di dalam
+ * tabel simbol kernel. Perlu diingat bahwa keberadaan simbol tidak
+ * menjamin bahwa hook sudah terpasang; fungsi ini hanya memeriksa
+ * eksistensi simbol. Beberapa simbol mungkin tidak terlihat oleh
+ * kallsyms_lookup_name tergantung konfigurasi kernel (CONFIG_KALLSYMS
+ * dan opsi ekspor simbol).
+ */
+int ksu_hook_exists(const char *symbol)
+{
+#ifdef CONFIG_KALLSYMS
+	void *addr;
+
+	if (!symbol)
+		return 0;
+
+	addr = (void *)kallsyms_lookup_name(symbol);
+	return addr ? 1 : 0;
+#else
+	/* Jika kallsyms tidak tersedia, kita tidak bisa memeriksa simbol */
+	return 0;
 #endif
 }
 
