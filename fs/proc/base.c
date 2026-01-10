@@ -105,6 +105,14 @@
 #include <linux/susfs.h>
 #endif
 
+#ifdef CONFIG_KSU_SUSFS
+#include <linux/susfs.h>
+#endif
+
+#ifdef CONFIG_KSU_SUSFS
+#include <linux/susfs.h>
+#endif
+
 /* NOTE:
  *	Implementing inode permission operations in /proc is almost
  *	certainly an error.  Permission checks need to happen during
@@ -1886,6 +1894,24 @@ static int do_proc_readlink(struct path *path, char __user *buffer, int buflen)
 	char *tmp = (char*)__get_free_page(GFP_TEMPORARY);
 	char *pathname;
 	int len;
+
+#ifdef CONFIG_KSU_SUSFS_SUS_MAPS
+	struct mm_struct *mm;
+	struct vm_area_struct *vma;
+	struct file *vma_file;
+	struct dentry *vma_dentry;
+	struct inode *vma_inode;
+	unsigned long ino;
+#endif
+
+#ifdef CONFIG_KSU_SUSFS_SUS_MAPS
+	struct mm_struct *mm;
+	struct vm_area_struct *vma;
+	struct file *vma_file;
+	struct dentry *vma_dentry;
+	struct inode *vma_inode;
+	unsigned long ino;
+#endif
 
 #ifdef CONFIG_KSU_SUSFS_SUS_MAPS
 	struct mm_struct *mm;

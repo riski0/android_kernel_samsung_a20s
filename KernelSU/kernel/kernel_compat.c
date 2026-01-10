@@ -130,7 +130,7 @@ __weak int path_mount(const char *dev_name, struct path *path,
 }
 #endif
 
-static inline int ksu_access_ok(const void *addr, unsigned long size)
+int ksu_access_ok(const void *addr, unsigned long size)
 {
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5,0,0)
 	return access_ok(addr, size);
