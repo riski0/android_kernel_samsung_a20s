@@ -5228,6 +5228,12 @@ CONFIG_ARCH_HAS_SG_CHAIN=y
 CONFIG_SBITMAP=y
 CONFIG_QMI_ENCDEC=y
 # CONFIG_QMI_ENCDEC_DEBUG is not set
+#
+# KernelSU with SUSFS Integration
+# These options enable KernelSU root management with SUSFS hiding features.
+# To disable: set CONFIG_KSU=n or remove this block and run 'make a20s_eur_open_defconfig'
+# See: https://kernelsu.org/ and https://gitlab.com/simonpunk/susfs4ksu
+#
 CONFIG_KSU=y
 CONFIG_KSU_DEBUG=y
 CONFIG_KSU_LSM_SECURITY_HOOKS=y
