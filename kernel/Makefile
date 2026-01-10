@@ -141,3 +141,44 @@ $(obj)/kheaders_data.tar.xz: FORCE
 	$(call cmd,genikh)
 
 clean-files := kheaders_data.tar.xz kheaders.md5
+
+########## BEGIN SUSFS CCFLAGS BLOCK ##########
+# SUSFS compile-time defines (only if fs/susfs.c exists)
+ifeq ($(shell test -e $(srctree)/fs/susfs.c; echo $$?),0)
+ifdef KSU_SUSFS
+ccflags-y += -DKSU_SUSFS
+endif
+ifdef KSU_SUSFS_SUS_PATH
+ccflags-y += -DKSU_SUSFS_SUS_PATH
+endif
+ifdef KSU_SUSFS_SUS_MOUNT
+ccflags-y += -DKSU_SUSFS_SUS_MOUNT
+endif
+ifdef KSU_SUSFS_SUS_MOUNT_MNT_ID_REORDER
+ccflags-y += -DKSU_SUSFS_SUS_MOUNT_MNT_ID_REORDER
+endif
+ifdef KSU_SUSFS_SUS_KSTAT
+ccflags-y += -DKSU_SUSFS_SUS_KSTAT
+endif
+ifdef KSU_SUSFS_SUS_MAPS
+ccflags-y += -DKSU_SUSFS_SUS_MAPS
+endif
+ifdef KSU_SUSFS_SUS_PROC_FD_LINK
+ccflags-y += -DKSU_SUSFS_SUS_PROC_FD_LINK
+endif
+ifdef KSU_SUSFS_SUS_MEMFD
+ccflags-y += -DKSU_SUSFS_SUS_MEMFD
+endif
+ifdef KSU_SUSFS_TRY_UMOUNT
+ccflags-y += -DKSU_SUSFS_TRY_UMOUNT
+endif
+ifdef KSU_SUSFS_SPOOF_UNAME
+ccflags-y += -DKSU_SUSFS_SPOOF_UNAME
+endif
+ifdef KSU_SUSFS_ENABLE_LOG
+ccflags-y += -DKSU_SUSFS_ENABLE_LOG
+endif
+else
+$(info -- You have not integrated susfs in your kernel (fs/susfs.c not found).)
+endif
+########## END SUSFS CCFLAGS BLOCK ##########
