@@ -4,6 +4,7 @@
 [![Android](https://img.shields.io/badge/Android-10%20(Q)-green.svg)](https://github.com/riski0/android_kernel_samsung_a20s)
 [![KernelSU](https://img.shields.io/badge/KernelSU-Enabled-orange.svg)](https://kernelsu.org/)
 [![SUSFS](https://img.shields.io/badge/SUSFS-v1.5.5-red.svg)](https://github.com/riski0/android_kernel_samsung_a20s)
+[![CI Build](https://github.com/riski0/android_kernel_samsung_a20s/actions/workflows/kernel-ci.yml/badge.svg)](https://github.com/riski0/android_kernel_samsung_a20s/actions/workflows/kernel-ci.yml)
 
 Custom kernel for Samsung Galaxy A20s with integrated KernelSU and SUSFS support for advanced root management and detection bypass.
 
@@ -61,13 +62,18 @@ Complete kernel-level hiding capabilities:
 
 ### Installation
 
-1. **Download/Build Kernel**
+1. **Download Pre-built Kernel (Recommended)**
+   - Visit [GitHub Actions](https://github.com/riski0/android_kernel_samsung_a20s/actions/workflows/kernel-ci.yml)
+   - Download the latest successful build artifacts
+   - Extract the kernel Image and DTBs from the artifacts
+
+   **OR Clone and Build from Source:**
    ```bash
    git clone -b testing/enable-kernelsu-manager https://github.com/riski0/android_kernel_samsung_a20s.git
    cd android_kernel_samsung_a20s
    ```
 
-2. **Build from Source**
+2. **Build from Source (Optional)**
    ```bash
    # Install dependencies
    sudo apt install -y build-essential bc bison flex libssl-dev libelf-dev git device-tree-compiler
@@ -92,6 +98,30 @@ Complete kernel-level hiding capabilities:
    - Download from [KernelSU Releases](https://github.com/tiann/KernelSU/releases)
    - Install APK
    - Grant root access
+
+## 🤖 Continuous Integration
+
+This repository includes automated CI/CD via GitHub Actions that builds the kernel on every push to the `main` branch.
+
+### Automated Build Features
+- ✅ **Automatic Compilation** - Kernel is built automatically on push
+- ✅ **Artifact Storage** - Build artifacts stored for 30 days
+- ✅ **Build Verification** - Ensures kernel compiles successfully
+- ✅ **Multiple Formats** - Image, Image.gz, Image.lz4, and DTBs
+
+### Accessing CI Builds
+1. Go to [Actions tab](https://github.com/riski0/android_kernel_samsung_a20s/actions/workflows/kernel-ci.yml)
+2. Select the latest successful workflow run
+3. Download the artifacts (requires GitHub login)
+4. Extract and use the kernel images
+
+### Build Artifacts Include
+- `Image` - Uncompressed kernel image
+- `Image.gz` - Gzip compressed kernel
+- `Image.lz4` - LZ4 compressed kernel  
+- `*.dtb` - Device tree binaries for SDM450
+- `*.ko` - Kernel modules (if any)
+- `BUILD_INFO.txt` - Build information and version details
 
 ## 📚 Documentation
 
