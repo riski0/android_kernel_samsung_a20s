@@ -53,6 +53,7 @@ jobs:
           rm clang.tar.gz
         fi
         
+
         # Download and extract GCC aarch64
         echo "Downloading GCC aarch64 toolchain..."
         if [ ! -d gcc-aarch64 ]; then
@@ -63,8 +64,11 @@ jobs:
           rm gcc.tar.gz
         fi
         
-        echo "Toolchains setup complete"
-        ls -la
+        [submodule "toolchain/clang"]
+          path = toolchain/clang
+          url = https://github.com/kdrag0n/proton-clang.git
+          echo "Toolchains setup complete"
+          ls -la
 
     - name: Clone KernelSU (in-tree integration)
       run: |
