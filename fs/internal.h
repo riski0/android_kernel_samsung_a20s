@@ -14,6 +14,11 @@ struct file_system_type;
 struct iomap;
 struct iomap_ops;
 struct linux_binprm;
+
+#ifdef CONFIG_KSU_SUSFS
+#include <linux/susfs.h>
+#endif
+
 struct path;
 struct mount;
 struct shrink_control;
