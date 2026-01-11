@@ -4,6 +4,8 @@
 # With KernelSU & SUSFS Support
 
 set -e
+set -o pipefail
+
 
 # Colors for output
 RED='\033[0;31m'
@@ -30,21 +32,42 @@ print_warning() {
 }
 
 # Configuration
-export ARCH=arm64
-export SUBARCH=arm64
-export ANDROID_MAJOR_VERSION=q
+TC_DIR=$(pwd)/toolchain
 
-# Paths
-KERNEL_DIR=$(pwd)
-OUT_DIR="$KERNEL_DIR/out"
-TOOLCHAIN_DIR="$KERNEL_DIR/toolchain"
-BUILD_DATE=$(date +%Y%m%d-%H%M)
+CLANG_PATH="$TC_DIR/clang/bin"
+GCC_PATH="$TC_DIR/gcc/bin"
+
+# jangan dahulukan clang untuk host
+export PATH="$PATH:$CLANG_PATH:$GCC_PATH"
+
+# target (kernel ARM64)
+export CC=clang
+export LD=ld.lld
+export AR=llvm-ar
+export NM=llvm-nm
+export OBJCOPY=llvm-objcopy
+export OBJDUMP=llvm-objdump
+export STRIP=llvm-strip
+
+# host tools (x86_64)
+export HOSTCC=/usr/bin/gcc
+export HOSTLD=/usr/bin/ld
+export HOSTAR=/usr/bin/ar
+export HOSTNM=/usr/bin/nm
+
+export CROSS_COMPILE=aarch64-elf-
+export CROSS_COMPILE_ARM32=arm-eabi-
+
+export LLVM=1
+export LLVM_IAS=1
+
 
 # Defconfig
 DEFCONFIG=a20s_eur_open_defconfig
 
-# Check if toolchain exists
-if [ ! -d "$TOOLCHAIN_DIR" ]; then
+if [ ! -d "$TC_DIR" ]; then
+    print_error "Toolchain directory not found: $TC_DIR"
+    exit 1
     print_error "Toolchain directory not found!"
     print_msg "Please download toolchains first. See BUILD_INSTRUCTIONS.md"
     print_msg ""
